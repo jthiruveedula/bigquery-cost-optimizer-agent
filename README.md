@@ -138,12 +138,3 @@ bigquery-cost-optimizer-agent/
 - Top recommendation: Partition filter addition saved $2,100/month alone
 - Average implementation time per recommendation: 15 minutes
 
----
-
-## Interview Talking Points
-
-- **Why LLM for SQL optimization?** Rule-based systems catch known anti-patterns; LLMs reason about query semantics, data relationships, and generate novel optimizations specific to the schema context
-- **INFORMATION_SCHEMA deep dive**: `JOBS` table contains bytes processed, slot hours, referenced tables, query text; `TABLE_STORAGE` has partition and clustering metadata; cross-referencing both enables holistic analysis
-- **Partition pruning ROI**: BigQuery charges by bytes scanned; adding `_PARTITIONTIME` filter on a 3-year table with daily partitions reduces scan to 1/1000th — the single highest-ROI optimization
-- **Cost attribution**: Slot reservation vs on-demand pricing crossover typically occurs at ~200 slot-hours/month for a project
-
