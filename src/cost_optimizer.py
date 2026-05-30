@@ -99,7 +99,7 @@ class BigQueryCostOptimizerAgent:
         \"\"\"Use Gemini to generate a human-readable cost optimization summary.\"\"\"
         try:
             import vertexai.generative_models as genai
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            model = genai.GenerativeModel("gemini-2.0-flash")
             prompt = (
                 "You are a BigQuery cost optimization expert. "
                 "Given this cost analysis report, write a 3-bullet executive summary "
