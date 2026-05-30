@@ -1,84 +1,12 @@
-"""BigQuery Cost Optimizer Agent
-AI-powered agent that analyzes query patterns, recommends partitioning,
-clustering, materialized views, and slot reservations to reduce BQ costs.
-"""
+"""BigQuery Cost Optimizer Agent"""
 
 from __future__ import annotations
-import re
 import json
 import logging
-from dataclasses import dataclass
-from typing import Any
-
+from src.optimizer.analyzer import QueryPatternAnalyzer
 from google.cloud import bigquery
 
 logger = logging.getLogger(__name__)
-
-COST_PER_TB = 5.0  # USD per TB scanned (on-demand)
-
-
-@dataclass
-class QueryAnalysis:
-    query_id: str
-    sql: str
-    bytes_processed: int
-    estimated_cost_usd: float
-    tables_referenced: list[str]
-    has_select_star: bool
-    missing_partition_filter: bool
-    missing_cluster_filter: bool
-    recommendations: list[str]
-
-    @property
-    def tb_processed(self) -> float:
-        return self.bytes_processed / 1e12
-
-
-class QueryPatternAnalyzer:
-    """Analyzes SQL patterns for cost inefficiencies."""
-
-    SELECT_STAR_RE = re.compile(r"SELECT\s+\*", re.IGNORECASE)
-    TABLE_RE = re.compile(r"FROM\s+`?([\w.]+)`?", re.IGNORECASE)
-
-    def analyze(self, sql: str, bytes_processed: int, query_id: str = "") -> QueryAnalysis:
-        recommendations = []
-        has_select_star = bool(self.SELECT_STAR_RE.search(sql))
-        if has_select_star:
-            recommendations.append(
-                "Replace SELECT * with explicit column list to reduce bytes scanned."
-            )
-
-        tables = self.TABLE_RE.findall(sql)
-        missing_partition_filter = "_PARTITIONTIME" not in sql and "DATE(" not in sql and "partition_date" not in sql.lower()
-        if missing_partition_filter and bytes_processed > 1e9:
-            recommendations.append(
-                "Add partition filter (_PARTITIONTIME or partition column) to prune scanned data."
-            )
-
-        missing_cluster_filter = bytes_processed > 5e9 and "WHERE" not in sql.upper()
-        if missing_cluster_filter:
-            recommendations.append(
-                "Table may benefit from clustering. Add WHERE clause on high-cardinality columns."
-            )
-
-        if bytes_processed > 100e9:
-            recommendations.append(
-                "Consider creating a materialized view for this expensive recurring query."
-            )
-
-        cost = (bytes_processed / 1e12) * COST_PER_TB
-        return QueryAnalysis(
-            query_id=query_id,
-            sql=sql,
-            bytes_processed=bytes_processed,
-            estimated_cost_usd=cost,
-            tables_referenced=tables,
-            has_select_star=has_select_star,
-            missing_partition_filter=missing_partition_filter,
-            missing_cluster_filter=missing_cluster_filter,
-            recommendations=recommendations,
-        )
-
 
 class BigQueryCostOptimizerAgent:
     """AI-powered cost optimization agent for BigQuery."""
@@ -93,7 +21,7 @@ class BigQueryCostOptimizerAgent:
         self, lookback_days: int = 7, limit: int = 50
     ) -> list[dict]:
         """Pull top expensive queries from INFORMATION_SCHEMA.JOBS."""
-        sql = f"""
+        sql = f\"\"\"
             SELECT
                 job_id,
                 query,
@@ -109,7 +37,7 @@ class BigQueryCostOptimizerAgent:
                 AND total_bytes_processed IS NOT NULL
             ORDER BY total_bytes_processed DESC
             LIMIT {limit}
-        """
+        \"\"\"
         rows = list(self.bq.query(sql).result())
         return [
             {
@@ -168,7 +96,7 @@ class BigQueryCostOptimizerAgent:
         return report
 
     def _gemini_summary(self, report: dict) -> str:
-        """Use Gemini to generate a human-readable cost optimization summary."""
+        \"\"\"Use Gemini to generate a human-readable cost optimization summary.\"\"\"
         try:
             import vertexai.generative_models as genai
             model = genai.GenerativeModel("gemini-1.5-flash")
@@ -184,8 +112,8 @@ class BigQueryCostOptimizerAgent:
             return ""
 
     def get_table_optimization_recommendations(self, table_ref: str) -> dict:
-        """Analyze a specific table and recommend partitioning/clustering."""
-        sql = f"""SELECT * FROM `{table_ref}` LIMIT 0"""
+        \"\"\"Analyze a specific table and recommend partitioning/clustering.\"\"\"
+        sql = f\"\"\"SELECT * FROM `{table_ref}` LIMIT 0\"\"\"
         job = self.bq.query(sql)
         job.result()
         table = self.bq.get_table(table_ref)
@@ -217,4 +145,3 @@ if __name__ == "__main__":
     agent = BigQueryCostOptimizerAgent(project_id=args.project)
     report = agent.analyze_and_recommend(lookback_days=args.days)
     print(json.dumps(report, indent=2))
-
